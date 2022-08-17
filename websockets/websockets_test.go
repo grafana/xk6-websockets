@@ -28,7 +28,7 @@ func assertSessionMetricsEmitted(t *testing.T, sampleContainers []metrics.Sample
 
 	for _, sampleContainer := range sampleContainers {
 		for _, sample := range sampleContainer.GetSamples() {
-			tags := sample.Tags.CloneTags()
+			tags := sample.Tags.Map()
 			if tags["url"] == url {
 				switch sample.Metric.Name {
 				case metrics.WSConnectingName:
@@ -68,7 +68,7 @@ func newTestState(t testing.TB) testState {
 	rt.SetFieldNameMapper(common.FieldNameMapper{})
 
 	samples := make(chan metrics.SampleContainer, 1000)
-
+	registry := metrics.NewRegistry()
 	state := &lib.State{
 		Group:  root,
 		Dialer: tb.Dialer,
@@ -83,8 +83,8 @@ func newTestState(t testing.TB) testState {
 		},
 		Samples:        samples,
 		TLSConfig:      tb.TLSClientConfig,
-		BuiltinMetrics: metrics.RegisterBuiltinMetrics(metrics.NewRegistry()),
-		Tags:           lib.NewTagMap(nil),
+		BuiltinMetrics: metrics.RegisterBuiltinMetrics(registry),
+		Tags:           lib.NewVUStateTags(registry.RootTagSet()),
 	}
 
 	vu := &modulestest.VU{
