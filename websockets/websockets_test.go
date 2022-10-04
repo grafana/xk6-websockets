@@ -283,7 +283,7 @@ func TestTwoTalking(t *testing.T) {
 			wch = ch2
 			rch = ch1
 		default:
-			w.WriteHeader(418)
+			w.WriteHeader(http.StatusTeapot)
 		}
 
 		conn, err := (&websocket.Upgrader{}).Upgrade(w, req, w.Header())

@@ -185,7 +185,6 @@ func (w *webSocket) establishConnection() {
 		// EnableCompression: enableCompression,
 		// Jar:               jar,
 	}
-
 	// TODO figure out cookie jar given the specification
 	header := make(http.Header)
 	header.Set("User-Agent", state.Options.UserAgent.String)
@@ -208,41 +207,31 @@ func (w *webSocket) establishConnection() {
 		if state.Options.SystemTags.Has(metrics.TagStatus) {
 			tags = tags.With("status", strconv.Itoa(httpResponse.StatusCode))
 		}
-
 		if state.Options.SystemTags.Has(metrics.TagSubproto) {
 			tags = tags.With("subproto", httpResponse.Header.Get("Sec-WebSocket-Protocol"))
 		}
 	}
 	w.conn = conn
-
 	if state.Options.SystemTags.Has(metrics.TagURL) {
 		tags = tags.With("url", w.url.String())
 	}
 	w.tags = tags
-
 	metrics.PushIfNotDone(ctx, state.Samples, metrics.ConnectedSamples{
 		Samples: []metrics.Sample{
 			{
-				TimeSeries: metrics.TimeSeries{
-					Metric: state.BuiltinMetrics.WSSessions,
-					Tags:   w.tags,
-				},
-				Time:  start,
-				Value: 1,
+				TimeSeries: metrics.TimeSeries{Metric: state.BuiltinMetrics.WSSessions, Tags: w.tags},
+				Time:       start,
+				Value:      1,
 			},
 			{
-				TimeSeries: metrics.TimeSeries{
-					Metric: state.BuiltinMetrics.WSConnecting,
-					Tags:   w.tags,
-				},
-				Time:  start,
-				Value: connectionDuration,
+				TimeSeries: metrics.TimeSeries{Metric: state.BuiltinMetrics.WSConnecting, Tags: w.tags},
+				Time:       start,
+				Value:      connectionDuration,
 			},
 		},
 		Tags: w.tags,
 		Time: start,
 	})
-
 	if connErr != nil {
 		// Pass the error to the user script before exiting immediately
 		w.tq.Queue(func() error {
