@@ -89,7 +89,6 @@ func newTestState(t testing.TB) testState {
 
 	vu := &modulestest.VU{
 		CtxField:     tb.Context,
-		InitEnvField: &common.InitEnvironment{},
 		RuntimeField: rt,
 		StateField:   state,
 	}
