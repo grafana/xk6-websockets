@@ -51,8 +51,8 @@ type ReadyState uint8
 const (
 	// CONNECTING is the state while the web socket is connecting
 	CONNECTING ReadyState = iota
-	// OPEN is the state after the websocket is established and before it starts closing
-	OPEN
+	// OPENED is the state after the websocket is established and before it starts closing
+	OPENED
 	// CLOSING is while the websocket is closing but is *not* closed yet
 	CLOSING
 	// CLOSED is when the websocket is finally closed
@@ -85,22 +85,13 @@ type webSocket struct {
 }
 
 func (r *WebSocketsAPI) websocket(c goja.ConstructorCall) *goja.Object {
-	urlValue := c.Argument(0)
 	rt := r.vu.Runtime()
-	if urlValue == nil || goja.IsUndefined(urlValue) {
-		common.Throw(rt, errors.New("WebSocket requires a url"))
-	}
-	urlString := urlValue.String()
-	url, err := url.Parse(urlString)
+
+	url, err := parseURL(c)
 	if err != nil {
-		common.Throw(rt, fmt.Errorf("WebSocket requires valid url, but got %q which resulted in %w", urlString, err))
+		common.Throw(rt, err)
 	}
-	if url.Scheme != "ws" && url.Scheme != "wss" {
-		common.Throw(rt, fmt.Errorf("WebSocket requires url with scheme ws or wss, but got %q", url.Scheme))
-	}
-	if url.Fragment != "" {
-		common.Throw(rt, fmt.Errorf("WebSocket requires no url fragment, but got %q", url.Fragment))
-	}
+
 	// TODO implement protocols
 	registerCallback := func() func(func() error) {
 		// fmt.Println("RegisterCallback called")
@@ -124,39 +115,60 @@ func (r *WebSocketsAPI) websocket(c goja.ConstructorCall) *goja.Object {
 	}
 
 	// Maybe have this after the goroutine below ?!?
+	defineWebsocket(rt, w)
 
-	must := func(err error) {
-		if err != nil {
-			common.Throw(rt, err)
-		}
+	go w.establishConnection()
+	return w.obj
+}
+
+// parseURL parses the url from the constructor call or returns an error
+func parseURL(c goja.ConstructorCall) (*url.URL, error) {
+	urlValue := c.Argument(0)
+
+	if urlValue == nil || goja.IsUndefined(urlValue) {
+		return nil, errors.New("WebSocket requires a url")
 	}
-	must(w.obj.DefineDataProperty(
+	urlString := urlValue.String()
+	url, err := url.Parse(urlString)
+	if err != nil {
+		return nil, fmt.Errorf("WebSocket requires valid url, but got %q which resulted in %w", urlString, err)
+	}
+	if url.Scheme != "ws" && url.Scheme != "wss" {
+		return nil, fmt.Errorf("WebSocket requires url with scheme ws or wss, but got %q", url.Scheme)
+	}
+	if url.Fragment != "" {
+		return nil, fmt.Errorf("WebSocket requires no url fragment, but got %q", url.Fragment)
+	}
+
+	return url, nil
+}
+
+// defineWebsocket defines all properties and methods for the WebSocket
+func defineWebsocket(rt *goja.Runtime, w *webSocket) {
+	must(rt, w.obj.DefineDataProperty(
 		"addEventListener", rt.ToValue(w.addEventListener), goja.FLAG_FALSE, goja.FLAG_FALSE, goja.FLAG_TRUE))
 	// TODO add onmessage,onclose and so on.
-	must(w.obj.DefineDataProperty(
+	must(rt, w.obj.DefineDataProperty(
 		"send", rt.ToValue(w.send), goja.FLAG_FALSE, goja.FLAG_FALSE, goja.FLAG_TRUE))
-	must(w.obj.DefineDataProperty(
+	must(rt, w.obj.DefineDataProperty(
 		"close", rt.ToValue(w.close), goja.FLAG_FALSE, goja.FLAG_FALSE, goja.FLAG_TRUE))
-	must(w.obj.DefineDataProperty(
-		"url", rt.ToValue(urlString), goja.FLAG_FALSE, goja.FLAG_FALSE, goja.FLAG_TRUE))
-	must(w.obj.DefineAccessorProperty( // this needs to be with an accessor as we change the value
+	must(rt, w.obj.DefineDataProperty(
+		"url", rt.ToValue(w.url.String()), goja.FLAG_FALSE, goja.FLAG_FALSE, goja.FLAG_TRUE))
+	must(rt, w.obj.DefineAccessorProperty( // this needs to be with an accessor as we change the value
 		"readyState", rt.ToValue(func() ReadyState {
 			return w.readyState
 		}), nil, goja.FLAG_FALSE, goja.FLAG_TRUE))
-	must(w.obj.DefineDataProperty(
+	must(rt, w.obj.DefineDataProperty(
 		"bufferedAmount", rt.ToValue(w.bufferedAmount), goja.FLAG_FALSE, goja.FLAG_FALSE, goja.FLAG_TRUE))
 	// extensions
 	// protocol
-	must(w.obj.DefineAccessorProperty(
+	must(rt, w.obj.DefineAccessorProperty(
 		"binaryType", rt.ToValue(func() goja.Value {
 			return rt.ToValue("ArrayBuffer")
 		}), rt.ToValue(func() goja.Value {
 			common.Throw(rt, errors.New("binaryType is not settable in k6 as it doesn't support Blob"))
 			return nil // it never gets to here
 		}), goja.FLAG_FALSE, goja.FLAG_TRUE))
-
-	go w.establishConnection()
-	return w.obj
 }
 
 type message struct {
@@ -431,7 +443,7 @@ func (w *webSocket) loop() {
 			// fmt.Println("got message")
 			w.tq.Queue(func() error {
 				// fmt.Println("message being processed in state", w.readyState)
-				if w.readyState != OPEN {
+				if w.readyState != OPENED {
 					return nil // TODO maybe still emit
 				}
 				// TODO maybe emit after all the listeners have fired and skip it if defaultPrevent was called?!?
@@ -446,20 +458,22 @@ func (w *webSocket) loop() {
 				})
 
 				rt := w.vu.Runtime()
-				ev := w.newEvent("message", msg.t)
-				must := func(err error) {
-					if err != nil {
-						common.Throw(rt, err)
-					}
-				}
+				ev := w.newEvent(MESSAGE, msg.t)
+
 				if msg.mtype == websocket.BinaryMessage {
 					// TODO this technically could be BLOB , but we don't support that
 					ab := rt.NewArrayBuffer(msg.data)
-					must(ev.DefineDataProperty("data", rt.ToValue(ab), goja.FLAG_FALSE, goja.FLAG_FALSE, goja.FLAG_TRUE))
+					must(rt, ev.DefineDataProperty("data", rt.ToValue(ab), goja.FLAG_FALSE, goja.FLAG_FALSE, goja.FLAG_TRUE))
 				} else {
-					must(ev.DefineDataProperty("data", rt.ToValue(string(msg.data)), goja.FLAG_FALSE, goja.FLAG_FALSE, goja.FLAG_TRUE))
+					must(
+						rt,
+						ev.DefineDataProperty("data", rt.ToValue(string(msg.data)), goja.FLAG_FALSE, goja.FLAG_FALSE, goja.FLAG_TRUE),
+					)
 				}
-				must(ev.DefineDataProperty("origin", rt.ToValue(w.url.String()), goja.FLAG_FALSE, goja.FLAG_FALSE, goja.FLAG_TRUE))
+				must(
+					rt,
+					ev.DefineDataProperty("origin", rt.ToValue(w.url.String()), goja.FLAG_FALSE, goja.FLAG_FALSE, goja.FLAG_TRUE),
+				)
 
 				// fmt.Println("messagelisteners", len(w.messageListeners))
 				for _, messageListener := range w.messageListeners {
@@ -499,7 +513,7 @@ func (w *webSocket) loop() {
 }
 
 func (w *webSocket) send(msg goja.Value) {
-	if w.readyState != OPEN {
+	if w.readyState != OPENED {
 		// TODO figure out if we should give different error while being closed/closed/connecting
 		common.Throw(w.vu.Runtime(), errors.New("InvalidStateError"))
 	}
@@ -563,7 +577,7 @@ func (w *webSocket) connectionConnected() error {
 	if w.readyState != CONNECTING {
 		return nil
 	}
-	w.readyState = OPEN
+	w.readyState = OPENED
 	return w.callOpenListeners(time.Now()) // TODO fix time
 }
 
@@ -590,15 +604,11 @@ func (w *webSocket) connectionClosedWithError(err error) error {
 func (w *webSocket) newEvent(eventType string, t time.Time) *goja.Object {
 	rt := w.vu.Runtime()
 	o := rt.NewObject()
-	must := func(err error) {
-		if err != nil {
-			common.Throw(rt, err)
-		}
-	}
-	must(o.DefineAccessorProperty("type", rt.ToValue(func() string {
+
+	must(rt, o.DefineAccessorProperty("type", rt.ToValue(func() string {
 		return eventType
 	}), nil, goja.FLAG_FALSE, goja.FLAG_TRUE))
-	must(o.DefineAccessorProperty("target", rt.ToValue(func() interface{} {
+	must(rt, o.DefineAccessorProperty("target", rt.ToValue(func() interface{} {
 		return w.obj
 	}), nil, goja.FLAG_FALSE, goja.FLAG_TRUE))
 	// skip srcElement
@@ -609,7 +619,7 @@ func (w *webSocket) newEvent(eventType string, t time.Time) *goja.Object {
 	// skip stopImmediatePropagation
 	// skip a bunch more
 
-	must(o.DefineAccessorProperty("timestamp", rt.ToValue(func() float64 {
+	must(rt, o.DefineAccessorProperty("timestamp", rt.ToValue(func() float64 {
 		return float64(t.UnixNano()) / 1_000_000 // milliseconds as double as per the spec
 		// https://w3c.github.io/hr-time/#dom-domhighrestimestamp
 	}), nil, goja.FLAG_FALSE, goja.FLAG_TRUE))
@@ -619,7 +629,7 @@ func (w *webSocket) newEvent(eventType string, t time.Time) *goja.Object {
 
 func (w *webSocket) callOpenListeners(timestamp time.Time) error {
 	for _, openListener := range w.openListeners {
-		if _, err := openListener(w.newEvent("open", timestamp)); err != nil {
+		if _, err := openListener(w.newEvent(OPEN, timestamp)); err != nil {
 			_ = w.conn.Close()                   // TODO log it?
 			_ = w.connectionClosedWithError(err) // TODO log it?
 			return err
@@ -630,13 +640,9 @@ func (w *webSocket) callOpenListeners(timestamp time.Time) error {
 
 func (w *webSocket) callErrorListeners(e error) error { // TODO use the error even thought it is not by the spec
 	rt := w.vu.Runtime()
-	must := func(err error) {
-		if err != nil {
-			common.Throw(rt, err)
-		}
-	}
-	ev := w.newEvent("error", time.Now())
-	must(ev.DefineDataProperty("error",
+
+	ev := w.newEvent(ERROR, time.Now())
+	must(rt, ev.DefineDataProperty("error",
 		rt.ToValue(e),
 		goja.FLAG_FALSE, goja.FLAG_FALSE, goja.FLAG_TRUE))
 	for _, errorListener := range w.errorListeners {
@@ -650,7 +656,7 @@ func (w *webSocket) callErrorListeners(e error) error { // TODO use the error ev
 func (w *webSocket) callCloseListeners() error {
 	for _, closeListener := range w.closeListeners {
 		// TODO the event here needs to be different and have an error
-		if _, err := closeListener(w.newEvent("close", time.Now())); err != nil { // TODO fix timestamp
+		if _, err := closeListener(w.newEvent(CLOSE, time.Now())); err != nil { // TODO fix timestamp
 			return err
 		}
 	}
@@ -661,14 +667,14 @@ func (w *webSocket) addEventListener(event string, listener func(goja.Value) (go
 	// TODO support options https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener#parameters
 	// TODO implement `onerror` and co as well
 	switch event {
-	case "open":
+	case OPEN:
 		w.openListeners = append(w.openListeners, listener)
-	case "error":
+	case ERROR:
 		w.errorListeners = append(w.errorListeners, listener)
-	case "message":
+	case MESSAGE:
 		// fmt.Println("!!!!!!!!!!!!! message added!!!!!!")
 		w.messageListeners = append(w.messageListeners, listener)
-	case "close":
+	case CLOSE:
 		w.closeListeners = append(w.closeListeners, listener)
 	default:
 		w.vu.State().Logger.Warnf("Unknown event for websocket %s", event)
