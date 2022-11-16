@@ -28,6 +28,4 @@ jobs:
           set -x
           which go
           go version
-          export GOMAXPROCS=2
-          args=("-p" "2" "-race")
-          go test "${args[@]}" -timeout 800s ./...
+          make test
