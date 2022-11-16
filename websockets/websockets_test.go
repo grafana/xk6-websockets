@@ -20,7 +20,14 @@ import (
 )
 
 // copied from k6/ws
-func assertSessionMetricsEmitted(t *testing.T, sampleContainers []metrics.SampleContainer, subprotocol, url string, status int, group string) {
+func assertSessionMetricsEmitted(
+	t *testing.T,
+	sampleContainers []metrics.SampleContainer,
+	subprotocol, //nolint:unparam // TODO: figure out if it's needed
+	url string,
+	status int, //nolint:unparam // TODO: figure out if it's needed
+	group string, //nolint:unparam // TODO: figure out if it's needed
+) {
 	t.Helper()
 	seenSessions := false
 	seenSessionDuration := false
@@ -193,10 +200,27 @@ func TestExceptionDontPanic(t *testing.T) {
     })`,
 			expectedError: "oops is not defined at <eval>:4:7",
 		},
+		"onOpen": {
+			script: `
+    var ws = new WebSocket("WSBIN_URL/ws/echo")
+    ws.onOpen(() => {
+      oops
+    })`,
+			expectedError: "oops is not defined at <eval>:4:7",
+		},
 		"error": {
 			script: `
     var ws = new WebSocket("WSBIN_URL/badurl")
     ws.addEventListener("error", ()=>{
+      inerroridf
+    })
+    `,
+			expectedError: "inerroridf is not defined at <eval>:4:7",
+		},
+		"onError": {
+			script: `
+    var ws = new WebSocket("WSBIN_URL/badurl")
+    ws.onError(()=>{
       inerroridf
     })
     `,
@@ -213,6 +237,17 @@ func TestExceptionDontPanic(t *testing.T) {
     })`,
 			expectedError: "incloseidf is not defined at <eval>:7:7",
 		},
+		"onClose": {
+			script: `
+    var ws = new WebSocket("WSBIN_URL/ws/echo")
+    ws.addEventListener("open", () => {
+        ws.close()
+    })
+    ws.onClose(()=>{
+      incloseidf
+    })`,
+			expectedError: "incloseidf is not defined at <eval>:7:7",
+		},
 		"message": {
 			script: `
     var ws = new WebSocket("WSBIN_URL/ws/echo")
@@ -220,6 +255,17 @@ func TestExceptionDontPanic(t *testing.T) {
         ws.send("something")
     })
     ws.addEventListener("message", ()=>{
+      inmessageidf
+    })`,
+			expectedError: "inmessageidf is not defined at <eval>:7:7",
+		},
+		"onMessage": {
+			script: `
+    var ws = new WebSocket("WSBIN_URL/ws/echo")
+    ws.addEventListener("open", () => {
+        ws.send("something")
+    })
+    ws.onMessage(()=>{
       inmessageidf
     })`,
 			expectedError: "inmessageidf is not defined at <eval>:7:7",
@@ -354,6 +400,98 @@ func TestTwoTalking(t *testing.T) {
 	assertSessionMetricsEmitted(t, samples, "", sr("WSBIN_URL/ws/couple/2"), http.StatusSwitchingProtocols, "")
 }
 
+func TestTwoTalkingUsingOns(t *testing.T) {
+	t.Parallel()
+
+	ts := newTestState(t)
+	sr := ts.tb.Replacer.Replace
+
+	ch1 := make(chan message)
+	ch2 := make(chan message)
+
+	ts.tb.Mux.HandleFunc("/ws/couple/", func(w http.ResponseWriter, req *http.Request) {
+		path := strings.TrimPrefix(req.URL.Path, "/ws/couple/")
+		var wch chan message
+		var rch chan message
+
+		switch path {
+		case "1":
+			wch = ch1
+			rch = ch2
+		case "2":
+			wch = ch2
+			rch = ch1
+		default:
+			w.WriteHeader(http.StatusTeapot)
+		}
+
+		conn, err := (&websocket.Upgrader{}).Upgrade(w, req, w.Header())
+		if err != nil {
+			return
+		}
+		defer func() {
+			_ = conn.Close()
+		}()
+
+		go func() {
+			defer close(wch)
+			for {
+				msgT, msg, err := conn.ReadMessage()
+				if err != nil {
+					return
+				}
+				wch <- message{
+					data:  msg,
+					mtype: msgT,
+				}
+			}
+		}()
+		for msg := range rch {
+			err := conn.WriteMessage(msg.mtype, msg.data)
+			if err != nil {
+				return
+			}
+		}
+	})
+
+	err := ts.ev.Start(func() error {
+		_, err := ts.rt.RunString(sr(`
+    var count = 0;
+    var ws1 = new WebSocket("WSBIN_URL/ws/couple/1");
+    ws1.onOpen(() => {
+      ws1.send("I am 1");
+    })
+    ws1.onMessage((e)=>{
+      if (e.data != "I am 2") {
+        throw "oops";
+      }
+      count++;
+      if (count == 2) {
+        ws1.close();
+      }
+    })
+    var ws2 = new WebSocket("WSBIN_URL/ws/couple/2");
+    ws2.onOpen(() => {
+      ws2.send("I am 2");
+    })
+    ws2.onMessage((e)=>{
+      if (e.data != "I am 1") {
+        throw "oops";
+      }
+      count++;
+      if (count == 2) {
+        ws2.close();
+      }
+    })
+	`))
+		return err
+	})
+	require.NoError(t, err)
+	samples := metrics.GetBufferedSamples(ts.samples)
+	assertSessionMetricsEmitted(t, samples, "", sr("WSBIN_URL/ws/couple/1"), http.StatusSwitchingProtocols, "")
+	assertSessionMetricsEmitted(t, samples, "", sr("WSBIN_URL/ws/couple/2"), http.StatusSwitchingProtocols, "")
+}
+
 func TestDialError(t *testing.T) {
 	t.Parallel()
 	ts := newTestState(t)
@@ -374,6 +512,25 @@ func TestDialError(t *testing.T) {
 		_, runErr := ts.rt.RunString(sr(`
 		var ws = new WebSocket("ws://127.0.0.2");
 		ws.addEventListener("error", (e) =>{
+			ws.close();
+			throw new Error("The provided url is an invalid endpoint")
+		})
+	`))
+		return runErr
+	})
+	assert.Error(t, err)
+}
+
+func TestOnError(t *testing.T) {
+	t.Parallel()
+	ts := newTestState(t)
+	sr := ts.tb.Replacer.Replace
+
+	ts.ev.WaitOnRegistered()
+	err := ts.ev.Start(func() error {
+		_, runErr := ts.rt.RunString(sr(`
+		var ws = new WebSocket("ws://127.0.0.2");
+		ws.onError((e) =>{
 			ws.close();
 			throw new Error("The provided url is an invalid endpoint")
 		})

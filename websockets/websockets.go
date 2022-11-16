@@ -147,7 +147,14 @@ func parseURL(c goja.ConstructorCall) (*url.URL, error) {
 func defineWebsocket(rt *goja.Runtime, w *webSocket) {
 	must(rt, w.obj.DefineDataProperty(
 		"addEventListener", rt.ToValue(w.addEventListener), goja.FLAG_FALSE, goja.FLAG_FALSE, goja.FLAG_TRUE))
-	// TODO add onmessage,onclose and so on.
+	must(rt, w.obj.DefineDataProperty(
+		"onMessage", rt.ToValue(w.generateEventListener(MESSAGE)), goja.FLAG_FALSE, goja.FLAG_FALSE, goja.FLAG_TRUE))
+	must(rt, w.obj.DefineDataProperty(
+		"onError", rt.ToValue(w.generateEventListener(ERROR)), goja.FLAG_FALSE, goja.FLAG_FALSE, goja.FLAG_TRUE))
+	must(rt, w.obj.DefineDataProperty(
+		"onOpen", rt.ToValue(w.generateEventListener(OPEN)), goja.FLAG_FALSE, goja.FLAG_FALSE, goja.FLAG_TRUE))
+	must(rt, w.obj.DefineDataProperty(
+		"onClose", rt.ToValue(w.generateEventListener(CLOSE)), goja.FLAG_FALSE, goja.FLAG_FALSE, goja.FLAG_TRUE))
 	must(rt, w.obj.DefineDataProperty(
 		"send", rt.ToValue(w.send), goja.FLAG_FALSE, goja.FLAG_FALSE, goja.FLAG_TRUE))
 	must(rt, w.obj.DefineDataProperty(
@@ -307,6 +314,7 @@ func (w *webSocket) loop() {
 		_ = w.conn.Close()
 		w.tq.Close()
 	}()
+
 	// Wraps a couple of channels around conn.ReadMessage
 	go func() { // copied from k6/ws
 		defer close(readDataChan)
@@ -663,16 +671,21 @@ func (w *webSocket) callCloseListeners() error {
 	return nil
 }
 
+// generateEventListener generates a function that adds a listener to the event type
+func (w *webSocket) generateEventListener(event string) func(listener func(goja.Value) (goja.Value, error)) {
+	return func(listener func(goja.Value) (goja.Value, error)) {
+		w.addEventListener(event, listener)
+	}
+}
+
 func (w *webSocket) addEventListener(event string, listener func(goja.Value) (goja.Value, error)) {
 	// TODO support options https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener#parameters
-	// TODO implement `onerror` and co as well
 	switch event {
 	case OPEN:
 		w.openListeners = append(w.openListeners, listener)
 	case ERROR:
 		w.errorListeners = append(w.errorListeners, listener)
 	case MESSAGE:
-		// fmt.Println("!!!!!!!!!!!!! message added!!!!!!")
 		w.messageListeners = append(w.messageListeners, listener)
 	case CLOSE:
 		w.closeListeners = append(w.closeListeners, listener)
