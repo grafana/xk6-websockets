@@ -2,7 +2,6 @@ package websockets
 
 import (
 	"net/http"
-	"net/http/cookiejar"
 	"strconv"
 	"strings"
 	"sync"
@@ -751,11 +750,9 @@ func TestCustomHeaders(t *testing.T) {
 		}
 	}))
 
-	ts.state.CookieJar, _ = cookiejar.New(nil)
-	ts.ev.WaitOnRegistered()
 	err := ts.ev.Start(func() error {
 		_, runErr := ts.rt.RunString(sr(`
-		var ws = new WebSocket("WSBIN_URL/ws-echo-someheader", [], {headers: {"x-lorem": "ipsum"}})
+		var ws = new WebSocket("WSBIN_URL/ws-echo-someheader", null, {headers: {"x-lorem": "ipsum"}})
 		ws.onopen = () => {
 			ws.close()
 		}
