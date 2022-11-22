@@ -90,7 +90,7 @@ func (r *WebSocketsAPI) websocket(c goja.ConstructorCall) *goja.Object {
 		common.Throw(rt, err)
 	}
 
-	parsedParams, err := parseWSParams(rt, c.Argument(2))
+	params, err := buildParams(r.vu.State(), rt, c.Argument(2))
 	if err != nil {
 		common.Throw(rt, err)
 	}
@@ -121,7 +121,7 @@ func (r *WebSocketsAPI) websocket(c goja.ConstructorCall) *goja.Object {
 	// Maybe have this after the goroutine below ?!?
 	defineWebsocket(rt, w)
 
-	go w.establishConnection(parsedParams)
+	go w.establishConnection(params)
 	return w.obj
 }
 
@@ -231,7 +231,6 @@ func (w *webSocket) establishConnection(params *wsParams) {
 		// Jar:               jar,
 	}
 
-	params.headers.Set("User-Agent", state.Options.UserAgent.String)
 	ctx := w.vu.Context()
 	start := time.Now()
 	conn, httpResponse, connErr := wsd.DialContext(ctx, w.url.String(), params.headers)

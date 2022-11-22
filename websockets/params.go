@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/dop251/goja"
+	"go.k6.io/k6/lib"
 )
 
 // wsParams represent the parameters bag for websocket
@@ -12,8 +13,8 @@ type wsParams struct {
 	headers http.Header
 }
 
-// parseWSParams parses the params from the constructor call or returns an error
-func parseWSParams(rt *goja.Runtime, raw goja.Value) (*wsParams, error) {
+// buildParams builds WebSocket params and configure some of them
+func buildParams(state *lib.State, rt *goja.Runtime, raw goja.Value) (*wsParams, error) {
 	parsed := &wsParams{
 		headers: make(http.Header),
 	}
@@ -42,6 +43,8 @@ func parseWSParams(rt *goja.Runtime, raw goja.Value) (*wsParams, error) {
 			return nil, fmt.Errorf("unknown option %s", k)
 		}
 	}
+
+	parsed.headers.Set("User-Agent", state.Options.UserAgent.String)
 
 	return parsed, nil
 }

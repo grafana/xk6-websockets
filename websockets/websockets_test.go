@@ -767,5 +767,6 @@ func TestCustomHeaders(t *testing.T) {
 	mu.Lock()
 	assert.True(t, len(collected) > 0)
 	assert.Equal(t, "ipsum", collected.Get("x-lorem"))
+	assert.Equal(t, "TestUserAgent", collected.Get("User-Agent"))
 	mu.Unlock()
 }
