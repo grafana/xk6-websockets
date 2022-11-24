@@ -896,7 +896,7 @@ func TestSystemTags(t *testing.T) {
 			ts.vu.StateField.Options.SystemTags = metrics.ToSystemTagSet([]string{expectedTagStr})
 
 			err = ts.ev.Start(func() error {
-				_, err := ts.rt.RunString(sr(`
+				_, runErr := ts.rt.RunString(sr(`
 				var ws = new WebSocket("WSBIN_URL/ws-echo")
 				ws.onopen = () => {
 					ws.send("test")
@@ -908,7 +908,7 @@ func TestSystemTags(t *testing.T) {
 					ws.close()
 				}
 			`))
-				return err
+				return runErr
 			})
 			require.NoError(t, err)
 
@@ -931,5 +931,38 @@ func TestSystemTags(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestCustomTags(t *testing.T) {
+	t.Parallel()
+
+	ts := newTestState(t)
+	sr := ts.tb.Replacer.Replace
+	err := ts.ev.Start(func() error {
+		_, err := ts.rt.RunString(sr(`
+    var ws = new WebSocket("WSBIN_URL/ws-echo", null, {tags: {lorem: "ipsum", version: 13}})
+    ws.onopen = () => {
+      ws.send("something")
+      ws.close()
+    }
+	`))
+		return err
+	})
+	require.NoError(t, err)
+	samples := metrics.GetBufferedSamples(ts.samples)
+	assertSessionMetricsEmitted(t, samples, "", sr("WSBIN_URL/ws-echo"), http.StatusSwitchingProtocols, "")
+
+	for _, sampleContainer := range samples {
+		require.NotEmpty(t, sampleContainer.GetSamples())
+		for _, sample := range sampleContainer.GetSamples() {
+			dataToCheck := sample.Tags.Map()
+
+			require.NotEmpty(t, dataToCheck)
+
+			assert.Equal(t, "ipsum", dataToCheck["lorem"])
+			assert.Equal(t, "13", dataToCheck["version"])
+			assert.NotEmpty(t, dataToCheck["url"])
+		}
 	}
 }
