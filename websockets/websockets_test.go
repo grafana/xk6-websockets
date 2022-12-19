@@ -279,7 +279,7 @@ func TestBinaryState(t *testing.T) {
     var ws = new WebSocket("WSBIN_URL/ws-echo")
     ws.addEventListener("open", () => ws.close())
 
-    if (ws.binaryType != "ArrayBuffer") {
+    if (ws.binaryType != "arraybuffer") {
       throw new Error("Wrong binaryType value, expected ArrayBuffer got "+ ws.binaryType)
     }
 

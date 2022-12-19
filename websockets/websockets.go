@@ -181,7 +181,7 @@ func defineWebsocket(rt *goja.Runtime, w *webSocket) {
 	// protocol
 	must(rt, w.obj.DefineAccessorProperty(
 		"binaryType", rt.ToValue(func() goja.Value {
-			return rt.ToValue("ArrayBuffer")
+			return rt.ToValue("arraybuffer")
 		}), rt.ToValue(func() goja.Value {
 			common.Throw(rt, errors.New("binaryType is not settable in k6 as it doesn't support Blob"))
 			return nil // it never gets to here
@@ -676,6 +676,7 @@ func (w *webSocket) assertStateOpen() {
 }
 
 // TODO support code and reason
+// https://websockets.spec.whatwg.org/#dom-websocket-close
 func (w *webSocket) close(code int, reason string) {
 	if w.readyState == CLOSED || w.readyState == CLOSING {
 		return
@@ -684,7 +685,11 @@ func (w *webSocket) close(code int, reason string) {
 	if code == 0 {
 		code = websocket.CloseNormalClosure
 	}
-	// fmt.Println("in Close")
+
+	if (code != websocket.CloseNormalClosure) || (code > 3000 || code > 4999) {
+		common.Throw(w.vu.Runtime(), errors.New("InvalidAccessError"))
+	}
+
 	w.writeQueueCh <- message{
 		mtype: websocket.CloseMessage,
 		data:  websocket.FormatCloseMessage(code, reason),
@@ -694,7 +699,6 @@ func (w *webSocket) close(code int, reason string) {
 
 func (w *webSocket) queueClose() {
 	w.tq.Queue(func() error {
-		// fmt.Println("in close")
 		w.close(websocket.CloseNormalClosure, "")
 		return nil
 	})
@@ -749,7 +753,7 @@ func (w *webSocket) newEvent(eventType string, t time.Time) *goja.Object {
 	// skip stopImmediatePropagation
 	// skip a bunch more
 
-	must(rt, o.DefineAccessorProperty("timestamp", rt.ToValue(func() float64 {
+	must(rt, o.DefineAccessorProperty("timeStamp", rt.ToValue(func() float64 {
 		return float64(t.UnixNano()) / 1_000_000 // milliseconds as double as per the spec
 		// https://w3c.github.io/hr-time/#dom-domhighrestimestamp
 	}), nil, goja.FLAG_FALSE, goja.FLAG_TRUE))

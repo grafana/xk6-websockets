@@ -5,10 +5,10 @@ const CLOSED_STATE = 3
 
 export default function () {
     // local echo server should be launched with `make ws-echo-server-run`
-    var url = "ws://localhost:10000";
-    var params = { "tags": { "my_tag": "hello" } };
+    const url = 'ws://localhost:10000';
+    const params = { "tags": { "my_tag": "hello" } };
 
-    let ws = new WebSocket(url, null, params)
+    const ws = new WebSocket(url, null, params)
     
     ws.onopen = () => {
         console.log('connected')
