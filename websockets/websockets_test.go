@@ -1,6 +1,7 @@
 package websockets
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/cookiejar"
@@ -1221,4 +1222,64 @@ func TestSessionPingAdd(t *testing.T) {
 	samplesBuf := metrics.GetBufferedSamples(ts.samples)
 	assertSessionMetricsEmitted(t, samplesBuf, "", sr("WSBIN_URL/ws-echo"), http.StatusSwitchingProtocols, "")
 	assert.Equal(t, []string{"from onpong"}, ts.callRecorder.Recorded())
+}
+
+func TestPanic(t *testing.T) {
+	t.Parallel()
+	tb := httpmultibin.NewHTTPMultiBin(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	sr := tb.Replacer.Replace
+
+	ts := newTestState(t)
+	ts.vu.CtxField = ctx
+	ts.rt.Set("l", func() { fmt.Println("l") })
+	ts.rt.Set("stop", func() {
+		cancel()
+	})
+	// If a websocket is closing when main context is done it might not ever call it's close as the event loop stops
+	// executing registered callbacks after the first error.
+	// In the test below we do have multiple websockets, and some of them will throw and some of them will cancel the
+	// (shared) context. If this happen in a given sequence the WaitOnRegistered will block as some of the websockets
+	// will wait on the event loop to call their callbacks to close the actual connection - forever.
+	err := ts.ev.Start(func() error {
+		_, runErr := ts.rt.RunString(sr(`
+        let a = 0
+        async function s() {
+			var ws = new WebSocket("WSBIN_URL/ws-echo")			
+			ws.addEventListener("open", () => {
+				ws.ping()
+			})
+
+			ws.addEventListener("pong", () => {
+                l()
+				ws.ping()
+                a++
+                if (a>10 && a <13) {
+                    ws.close()
+                }
+			})
+            ws.addEventListener("error", (e) => {
+                throw e;
+            })
+            ws.addEventListener("close", () =>{
+                    throw "s";
+                    stop()
+            })
+        }
+        for (let i = 0; i <10; i++) {
+            s()
+        }
+		`))
+		return runErr
+	})
+
+	assert.NoError(t, err)
+	ts.ev.WaitOnRegistered()
+
+	/*
+		samplesBuf := metrics.GetBufferedSamples(ts.samples)
+		assertSessionMetricsEmitted(t, samplesBuf, "", sr("WSBIN_URL/ws-echo"), http.StatusSwitchingProtocols, "")
+		assert.Equal(t, []string{"from onpong"}, ts.callRecorder.Recorded())
+	*/
 }
