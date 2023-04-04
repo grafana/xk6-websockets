@@ -323,7 +323,7 @@ func (w *webSocket) emitConnectionMetrics(ctx context.Context, start time.Time, 
 
 const writeWait = 10 * time.Second
 
-//nolint:funlen,gocognit,cyclop
+//nolint:funlen,gocognit
 func (w *webSocket) loop() {
 	// Pass ping/pong events through the main control loop
 	pingChan := make(chan string)
