@@ -466,9 +466,7 @@ func (w *webSocket) loop() {
 			// socket events will not be forwarded to the VU
 			w.queueClose()
 			ctxDone = nil // this is to block this branch and get through w.done
-			// fmt.Println("ctxDone")
 		case <-w.done:
-			// fmt.Println("w.done")
 			return
 		case pingData := <-pingChan:
 
