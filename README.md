@@ -1,6 +1,6 @@
 # xk6-websockets
 
-This extension adds a PoC [Websockets API](https://websockets.spec.whatwg.org) implementation to [k6](https://www.k6.io).
+This extension adds a PoC [WebSockets API](https://websockets.spec.whatwg.org) implementation to [k6](https://www.k6.io).
 
 This is meant to try to implement the specification as close as possible without doing stuff that don't make sense in k6 like:
 
@@ -40,4 +40,4 @@ It is implemented using the [xk6](https://k6.io/blog/extending-k6-with-xk6/) sys
 
 ## Discrepancies with the specifications
 
-* binaryType is "ArrayBuffer" by default instead of "Blob" and will throw an exception if it's tried to be changed as "Blob" is not supported by k6.
+* binaryType is "arraybuffer" by default instead of "Blob" and will throw an exception if it's tried to be changed as "Blob" is not supported by k6.
