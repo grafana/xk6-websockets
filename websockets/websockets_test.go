@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/dop251/goja"
-	"github.com/gorilla/websocket"
+	"github.com/fasthttp/websocket"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/guregu/null.v3"
@@ -928,7 +928,7 @@ func TestCookiesDefaultJar(t *testing.T) {
 	ts.state.CookieJar, _ = cookiejar.New(nil)
 	err = ts.ev.Start(func() error {
 		_, runErr := ts.rt.RunString(sr(`
-		http.cookieJar().set("HTTPBIN_URL/ws-echo-someheader", "someheader", "defaultjar")		
+		http.cookieJar().set("HTTPBIN_URL/ws-echo-someheader", "someheader", "defaultjar")
 
 		var ws = new WebSocket("WSBIN_URL/ws-echo-someheader", null)
 		ws.onopen = () => {
@@ -1231,7 +1231,7 @@ func TestSessionPingAdd(t *testing.T) {
 
 	err := ts.ev.Start(func() error {
 		_, runErr := ts.rt.RunString(sr(`
-			var ws = new WebSocket("WSBIN_URL/ws-echo")			
+			var ws = new WebSocket("WSBIN_URL/ws-echo")
 			ws.addEventListener("open", () => {
 				ws.ping()
 			})

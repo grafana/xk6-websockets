@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/dop251/goja"
-	"github.com/gorilla/websocket"
+	"github.com/fasthttp/websocket"
 	"github.com/grafana/xk6-websockets/websockets/events"
 	"github.com/mstoykov/k6-taskqueue-lib/taskqueue"
 
