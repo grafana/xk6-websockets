@@ -38,6 +38,10 @@ It is implemented using the [xk6](https://k6.io/blog/extending-k6-with-xk6/) sys
   $ ./k6 run ./examples/test-api.k6.io.js
   ```
 
+## Contributing
+
+Contributing to this repository is following general k6's [contribution guidelines](https://github.com/grafana/k6/blob/master/CONTRIBUTING.md) since the long-term goal is to merge this extension into the main k6 repository.
+
 ## Discrepancies with the specifications
 
 * binaryType is "ArrayBuffer" by default instead of "Blob" and will throw an exception if it's tried to be changed as "Blob" is not supported by k6.
