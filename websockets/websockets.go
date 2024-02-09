@@ -269,11 +269,12 @@ func (w *webSocket) establishConnection(params *wsParams) {
 	w.conn = conn
 
 	nameTagValue, nameTagManuallySet := params.tagsAndMeta.Tags.Get(metrics.TagName.String())
+	// After k6 v0.41.0, the `name` and `url` tags have the exact same values:
 	if nameTagManuallySet {
 		w.tagsAndMeta.SetSystemTagOrMetaIfEnabled(systemTags, metrics.TagURL, nameTagValue)
-		w.tagsAndMeta.SetSystemTagOrMetaIfEnabled(systemTags, metrics.TagName, nameTagValue)
 	} else {
 		w.tagsAndMeta.SetSystemTagOrMetaIfEnabled(systemTags, metrics.TagURL, w.url.String())
+		w.tagsAndMeta.SetSystemTagOrMetaIfEnabled(systemTags, metrics.TagName, w.url.String())
 	}
 
 	w.emitConnectionMetrics(ctx, start, connectionDuration)
