@@ -268,7 +268,13 @@ func (w *webSocket) establishConnection(params *wsParams) {
 	}
 	w.conn = conn
 
-	w.tagsAndMeta.SetSystemTagOrMetaIfEnabled(systemTags, metrics.TagURL, w.url.String())
+	nameTagValue, nameTagManuallySet := params.tagsAndMeta.Tags.Get(metrics.TagName.String())
+	if nameTagManuallySet {
+		w.tagsAndMeta.SetSystemTagOrMetaIfEnabled(systemTags, metrics.TagURL, nameTagValue)
+		w.tagsAndMeta.SetSystemTagOrMetaIfEnabled(systemTags, metrics.TagName, nameTagValue)
+	} else {
+		w.tagsAndMeta.SetSystemTagOrMetaIfEnabled(systemTags, metrics.TagURL, w.url.String())
+	}
 
 	w.emitConnectionMetrics(ctx, start, connectionDuration)
 	if connErr != nil {
