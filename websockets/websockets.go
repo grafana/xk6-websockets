@@ -83,6 +83,7 @@ type webSocket struct {
 	// fields that should be seen by js only be updated on the event loop
 	readyState     ReadyState
 	bufferedAmount int
+	binaryType     string
 }
 
 type ping struct {
@@ -168,10 +169,17 @@ func defineWebsocket(rt *goja.Runtime, w *webSocket) {
 	// protocol
 	must(rt, w.obj.DefineAccessorProperty(
 		"binaryType", rt.ToValue(func() goja.Value {
-			return rt.ToValue("ArrayBuffer")
-		}), rt.ToValue(func() goja.Value {
-			common.Throw(rt, errors.New("binaryType is not settable in k6 as it doesn't support Blob"))
-			return nil // it never gets to here
+			return rt.ToValue(w.binaryType)
+		}), rt.ToValue(func(s string) error {
+			switch s {
+			case "blob":
+				return fmt.Errorf("blob is currently not supported, only arraybuffer is.")
+			case "arraybuffer":
+				w.binaryType = s
+				return nil
+			default:
+				return fmt.Errorf("unknown binaryType %s, the supported one is arraybuffer.", s)
+			}
 		}), goja.FLAG_FALSE, goja.FLAG_TRUE))
 
 	setOn := func(property string, el *eventListener) {
@@ -382,6 +390,9 @@ func (w *webSocket) loop() {
 	}
 }
 
+const binarytypeWarning = `You have not set a Websocket binaryType to "arraybuffer", but you got a binary response. ` +
+	`This has been done automatically now, but in the future this will not work.`
+
 func (w *webSocket) queueMessage(msg *message) {
 	w.tq.Queue(func() error {
 		if w.readyState != OPEN {
@@ -402,6 +413,10 @@ func (w *webSocket) queueMessage(msg *message) {
 		ev := w.newEvent(events.MESSAGE, msg.t)
 
 		if msg.mtype == websocket.BinaryMessage {
+			if w.binaryType == "" {
+				w.binaryType = "arraybuffer"
+				w.vu.State().Logger.Warn(binarytypeWarning)
+			}
 			// TODO this technically could be BLOB , but we don't support that
 			ab := rt.NewArrayBuffer(msg.data)
 			must(rt, ev.DefineDataProperty("data", rt.ToValue(ab), goja.FLAG_FALSE, goja.FLAG_FALSE, goja.FLAG_TRUE))
