@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/gorilla/websocket"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/guregu/null.v3"
@@ -19,7 +18,6 @@ import (
 	httpModule "go.k6.io/k6/js/modules/k6/http"
 	"go.k6.io/k6/js/modulestest"
 	"go.k6.io/k6/lib"
-	"go.k6.io/k6/lib/testutils"
 	"go.k6.io/k6/lib/testutils/httpmultibin"
 	"go.k6.io/k6/metrics"
 )
@@ -266,8 +264,6 @@ func TestReadyState(t *testing.T) {
 func TestBinaryState(t *testing.T) {
 	t.Parallel()
 	ts := newTestState(t)
-	logger, hook := testutils.NewLoggerWithHook(t, logrus.WarnLevel)
-	ts.runtime.VU.StateField.Logger = logger
 	_, err := ts.runtime.RunOnEventLoop(ts.tb.Replacer.Replace(`
 		var ws = new WebSocket("WSBIN_URL/ws-echo-invalid")
 		ws.addEventListener("open", () => {
@@ -293,10 +289,7 @@ func TestBinaryState(t *testing.T) {
 			throw new Error("Expects ws.binaryType to not be writable")
 		}
 	`))
-	require.NoError(t, err)
-	logs := hook.Drain()
-	require.Len(t, logs, 1)
-	require.Contains(t, logs[0].Message, binarytypeWarning)
+	require.ErrorContains(t, err, binarytypeError)
 }
 
 func TestExceptionDontPanic(t *testing.T) {

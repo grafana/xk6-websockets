@@ -395,8 +395,9 @@ func (w *webSocket) loop() {
 	}
 }
 
-const binarytypeWarning = `You have not set a Websocket binaryType to "arraybuffer", but you got a binary response. ` +
-	`This has been done automatically now, but in the future this will not work.`
+const binarytypeError = `websocket's binaryType hasn't been set to "arraybuffer", ` +
+	`but a binary message has been received. ` +
+	`"blob" is still not supported so the websocket is erroring out`
 
 func (w *webSocket) queueMessage(msg *message) {
 	w.tq.Queue(func() error {
@@ -419,8 +420,7 @@ func (w *webSocket) queueMessage(msg *message) {
 
 		if msg.mtype == websocket.BinaryMessage {
 			if w.binaryType == "" {
-				w.binaryType = arraybufferBinaryType
-				w.vu.State().Logger.Warn(binarytypeWarning)
+				return errors.New(binarytypeError)
 			}
 			// TODO this technically could be BLOB , but we don't support that
 			ab := rt.NewArrayBuffer(msg.data)
