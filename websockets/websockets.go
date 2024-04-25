@@ -147,6 +147,11 @@ func parseURL(urlValue goja.Value) (*url.URL, error) {
 	return url, nil
 }
 
+const (
+	arraybufferBinaryType = "arraybuffer"
+	blobBinaryType        = "blob"
+)
+
 // defineWebsocket defines all properties and methods for the WebSocket
 func defineWebsocket(rt *goja.Runtime, w *webSocket) {
 	must(rt, w.obj.DefineDataProperty(
@@ -172,9 +177,9 @@ func defineWebsocket(rt *goja.Runtime, w *webSocket) {
 			return rt.ToValue(w.binaryType)
 		}), rt.ToValue(func(s string) error {
 			switch s {
-			case "blob":
-				return fmt.Errorf("blob is currently not supported, only arraybuffer is.")
-			case "arraybuffer":
+			case blobBinaryType:
+				return errors.New("blob is currently not supported, only arraybuffer is.")
+			case arraybufferBinaryType:
 				w.binaryType = s
 				return nil
 			default:
@@ -414,7 +419,7 @@ func (w *webSocket) queueMessage(msg *message) {
 
 		if msg.mtype == websocket.BinaryMessage {
 			if w.binaryType == "" {
-				w.binaryType = "arraybuffer"
+				w.binaryType = arraybufferBinaryType
 				w.vu.State().Logger.Warn(binarytypeWarning)
 			}
 			// TODO this technically could be BLOB , but we don't support that
