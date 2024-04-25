@@ -178,12 +178,12 @@ func defineWebsocket(rt *goja.Runtime, w *webSocket) {
 		}), rt.ToValue(func(s string) error {
 			switch s {
 			case blobBinaryType:
-				return errors.New("blob is currently not supported, only arraybuffer is.")
+				return errors.New("blob is currently not supported, only arraybuffer is")
 			case arraybufferBinaryType:
 				w.binaryType = s
 				return nil
 			default:
-				return fmt.Errorf("unknown binaryType %s, the supported one is arraybuffer.", s)
+				return fmt.Errorf("unknown binaryType %s, the supported one is arraybuffer", s)
 			}
 		}), goja.FLAG_FALSE, goja.FLAG_TRUE))
 
