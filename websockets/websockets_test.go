@@ -28,7 +28,7 @@ import (
 func assertSessionMetricsEmitted(
 	t *testing.T,
 	sampleContainers []metrics.SampleContainer,
-	subprotocol, //nolint:unparam // TODO: check why it always same in tests
+	subprotocol,
 	url string,
 	status int, //nolint:unparam // TODO: check why it always same in tests
 	group string, //nolint:unparam // TODO: check why it always same in tests
