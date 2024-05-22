@@ -300,7 +300,9 @@ func (w *webSocket) establishConnection(params *wsParams) {
 		}()
 
 		w.tagsAndMeta.SetSystemTagOrMetaIfEnabled(systemTags, metrics.TagStatus, strconv.Itoa(httpResponse.StatusCode))
-		w.protocol = conn.Subprotocol()
+		if conn != nil {
+			w.protocol = conn.Subprotocol()
+		}
 		w.tagsAndMeta.SetSystemTagOrMetaIfEnabled(systemTags, metrics.TagSubproto, w.protocol)
 	}
 	w.conn = conn
