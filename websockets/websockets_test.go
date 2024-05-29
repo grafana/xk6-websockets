@@ -280,8 +280,8 @@ func TestBinaryState(t *testing.T) {
 				throw "Expected 4 bufferedAmount got "+ ws.bufferedAmount
 			}
 			ws.onmessage = (e) => {
-				if (ws.bufferedAmount != 0) {
-					throw "Expected 0 bufferedAmount got "+ ws.bufferedAmount
+				if (ws.bufferedAmount != 0 && ws.bufferedAmount != 2) { // it is possible one or both were flushed
+					throw "Expected 0 or 2 bufferedAmount, but got "+ ws.bufferedAmount
 				}
 				ws.close()
 				call(JSON.stringify(e))
