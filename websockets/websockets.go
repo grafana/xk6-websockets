@@ -45,6 +45,7 @@ func (r *WebSocketsAPI) Exports() modules.Exports {
 	return modules.Exports{
 		Named: map[string]interface{}{
 			"WebSocket": r.websocket,
+			"Blob":      r.blob,
 		},
 	}
 }
@@ -203,9 +204,7 @@ func defineWebsocket(rt *sobek.Runtime, w *webSocket) {
 			return rt.ToValue(w.binaryType)
 		}), rt.ToValue(func(s string) error {
 			switch s {
-			case blobBinaryType:
-				return errors.New("blob is currently not supported, only arraybuffer is")
-			case arraybufferBinaryType:
+			case blobBinaryType, arraybufferBinaryType:
 				w.binaryType = s
 				return nil
 			default:
@@ -425,9 +424,6 @@ func (w *webSocket) loop() {
 	}
 }
 
-const binarytypeWarning = `You have not set a Websocket binaryType to "arraybuffer", but you got a binary response. ` +
-	`This has been done automatically now, but in the future this will not work.`
-
 func (w *webSocket) queueMessage(msg *message) {
 	w.tq.Queue(func() error {
 		if w.readyState != OPEN {
@@ -448,13 +444,15 @@ func (w *webSocket) queueMessage(msg *message) {
 		ev := w.newEvent(events.MESSAGE, msg.t)
 
 		if msg.mtype == websocket.BinaryMessage {
-			if w.binaryType == "" {
-				w.binaryType = arraybufferBinaryType
-				w.vu.State().Logger.Warn(binarytypeWarning)
+			var data any
+			// Use "blob" as default, as per spec:
+			// https://developer.mozilla.org/en-US/docs/Web/API/WebSocket/binaryType
+			if w.binaryType == "" || w.binaryType == blobBinaryType {
+				data = newBlob(rt, []interface{}{msg.data})
+			} else {
+				data = rt.NewArrayBuffer(msg.data)
 			}
-			// TODO this technically could be BLOB , but we don't support that
-			ab := rt.NewArrayBuffer(msg.data)
-			must(rt, ev.DefineDataProperty("data", rt.ToValue(ab), sobek.FLAG_FALSE, sobek.FLAG_FALSE, sobek.FLAG_TRUE))
+			must(rt, ev.DefineDataProperty("data", rt.ToValue(data), sobek.FLAG_FALSE, sobek.FLAG_FALSE, sobek.FLAG_TRUE))
 		} else {
 			must(
 				rt,
