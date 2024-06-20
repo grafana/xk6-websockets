@@ -7,6 +7,7 @@ import (
 	"github.com/grafana/sobek"
 
 	"go.k6.io/k6/js/common"
+	"go.k6.io/k6/js/modules/k6/experimental/streams"
 )
 
 type blob struct {
@@ -53,6 +54,9 @@ func (r *WebSocketsAPI) blob(call sobek.ConstructorCall) *sobek.Object {
 	}), nil, sobek.FLAG_FALSE, sobek.FLAG_TRUE))
 	must(rt, obj.Set("text", func(_ sobek.FunctionCall) sobek.Value {
 		return rt.ToValue(b.text())
+	}))
+	must(rt, obj.Set("stream", func(_ sobek.FunctionCall) sobek.Value {
+		return rt.ToValue(streams.NewReadableStreamFromReader(r.vu, &b.data))
 	}))
 	must(rt, obj.Set("arrayBuffer", func(_ sobek.FunctionCall) sobek.Value {
 		return rt.ToValue(rt.NewArrayBuffer(b.data.Bytes()))
