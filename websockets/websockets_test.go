@@ -314,7 +314,8 @@ func TestBinaryState(t *testing.T) {
 			throw new Error("Expects ws.binaryType to not be writable")
 		}
 	`))
-	require.NoError(t, err)
+	require.Error(t, err)
+	require.ErrorContains(t, err, binarytypeError)
 	logs := hook.Drain()
 	require.Len(t, logs, 0)
 }
@@ -326,7 +327,7 @@ func TestBinaryType_Default(t *testing.T) {
 	logger, hook := testutils.NewLoggerWithHook(t, logrus.WarnLevel)
 	ts.runtime.VU.StateField.Logger = logger
 	_, err := ts.runtime.RunOnEventLoop(ts.tb.Replacer.Replace(`
-		var ws = new WebSocket("WSBIN_URL/ws-echo")
+		var ws = new WebSocket("WSBIN_URL/ws-echo-invalid")
 		ws.addEventListener("open", () => {
 			const sent = new Uint8Array([164,41]).buffer
 			ws.send(sent)
@@ -343,7 +344,8 @@ func TestBinaryType_Default(t *testing.T) {
 			}
 		})
 	`))
-	require.NoError(t, err)
+	require.Error(t, err)
+	require.ErrorContains(t, err, binarytypeError)
 	logs := hook.Drain()
 	require.Len(t, logs, 0)
 }
