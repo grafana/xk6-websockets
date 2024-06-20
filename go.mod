@@ -5,14 +5,14 @@ go 1.21
 toolchain go1.22.3
 
 require (
-	github.com/gorilla/websocket v1.5.3
+	github.com/gorilla/websocket v1.5.1
 	github.com/grafana/sobek v0.0.0-20240607083612-4f0cd64f4e78
 	github.com/mstoykov/k6-taskqueue-lib v0.1.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.9.0
 	go.k6.io/k6 v0.51.1-0.20240612130226-3415ce6edc99
 	go.uber.org/goleak v1.3.0
-	gopkg.in/guregu/null.v3 v3.5.0
+	gopkg.in/guregu/null.v3 v3.3.0
 )
 
 require (
