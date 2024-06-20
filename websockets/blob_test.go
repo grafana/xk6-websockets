@@ -9,6 +9,7 @@ import (
 )
 
 func TestBlob_text(t *testing.T) {
+	t.Parallel()
 	ts := newTestState(t)
 	val, err := ts.runtime.RunOnEventLoop(`
 		const blob = new Blob(["P", "A", "SS"]);
@@ -19,6 +20,7 @@ func TestBlob_text(t *testing.T) {
 }
 
 func TestBlob_arrayBuffer(t *testing.T) {
+	t.Parallel()
 	ts := newTestState(t)
 	val, err := ts.runtime.RunOnEventLoop(`
 		const blob = new Blob(["P", "A", "SS"]);
@@ -32,6 +34,7 @@ func TestBlob_arrayBuffer(t *testing.T) {
 }
 
 func TestBlob_stream(t *testing.T) {
+	t.Parallel()
 	ts := newTestState(t)
 	val, err := ts.runtime.RunOnEventLoop(`
 		(async () => {
