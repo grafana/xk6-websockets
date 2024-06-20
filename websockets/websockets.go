@@ -448,7 +448,11 @@ func (w *webSocket) queueMessage(msg *message) {
 			// Use "blob" as default, as per spec:
 			// https://developer.mozilla.org/en-US/docs/Web/API/WebSocket/binaryType
 			if w.binaryType == "" || w.binaryType == blobBinaryType {
-				data = newBlob(rt, []interface{}{msg.data})
+				var err error
+				data, err = rt.New(rt.Get("Blob"), rt.ToValue([]interface{}{msg.data}))
+				if err != nil {
+					common.Throw(rt, fmt.Errorf("failed to create Blob: %w", err))
+				}
 			} else {
 				data = rt.NewArrayBuffer(msg.data)
 			}

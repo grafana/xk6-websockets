@@ -18,6 +18,8 @@ func (b *Blob) text() string {
 }
 
 func (r *WebSocketsAPI) blob(call sobek.ConstructorCall) *sobek.Object {
+	rt := r.vu.Runtime()
+
 	var blobParts []interface{}
 	if len(call.Arguments) > 0 {
 		if parts, ok := call.Arguments[0].Export().([]interface{}); ok {
@@ -25,10 +27,6 @@ func (r *WebSocketsAPI) blob(call sobek.ConstructorCall) *sobek.Object {
 		}
 	}
 
-	return newBlob(r.vu.Runtime(), blobParts)
-}
-
-func newBlob(rt *sobek.Runtime, blobParts []interface{}) *sobek.Object {
 	b := &Blob{}
 	if len(blobParts) > 0 {
 		for _, part := range blobParts {
@@ -67,6 +65,18 @@ func newBlob(rt *sobek.Runtime, blobParts []interface{}) *sobek.Object {
 
 	if err := obj.Set("arrayBuffer", func(call sobek.FunctionCall) sobek.Value {
 		return rt.ToValue(rt.NewArrayBuffer(b.data.Bytes()))
+	}); err != nil {
+		common.Throw(rt, err)
+	}
+
+	proto := call.This.Prototype()
+	err := obj.SetPrototype(proto)
+	if err != nil {
+		common.Throw(rt, err)
+	}
+
+	if err := proto.Set("toString", func(call sobek.FunctionCall) sobek.Value {
+		return rt.ToValue("[object Blob]")
 	}); err != nil {
 		common.Throw(rt, err)
 	}

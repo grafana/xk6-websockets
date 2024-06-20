@@ -332,9 +332,9 @@ func TestBinaryType(t *testing.T) {
 			const sent = new Uint8Array([164,41]).buffer
 			ws.send(sent)
 			ws.onmessage = (e) => {
-				//if (!(e.data instanceof Blob)) {
-				//	throw new Error("Wrong event.data type; expected: Blob, got: "+ typeof e.data)
-				//}
+				if (!(e.data instanceof Blob)) {
+					throw new Error("Wrong event.data type; expected: Blob, got: "+ typeof e.data)
+				}
 
 				if (sent.byteLength !== e.data.arrayBuffer().byteLength) {
 					throw new Error("The data received isn't equal to the data sent")
@@ -360,9 +360,9 @@ func TestBinaryType(t *testing.T) {
 			const sent = new Uint8Array([164,41]).buffer
 			ws.send(sent)
 			ws.onmessage = (e) => {
-				//if (!(e.data instanceof Blob)) {
-				//	throw new Error("Wrong event.data type; expected: Blob, got: "+ typeof e.data)
-				//}
+				if (!(e.data instanceof Blob)) {
+					throw new Error("Wrong event.data type; expected: Blob, got: "+ typeof e.data)
+				}
 
 				if (sent.byteLength !== e.data.arrayBuffer().byteLength) {
 					throw new Error("The data received isn't equal to the data sent")
