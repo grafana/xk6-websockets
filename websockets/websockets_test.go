@@ -322,7 +322,6 @@ func TestBinaryState(t *testing.T) {
 
 func TestBinaryType_Default(t *testing.T) {
 	t.Parallel()
-
 	ts := newTestState(t)
 	logger, hook := testutils.NewLoggerWithHook(t, logrus.WarnLevel)
 	ts.runtime.VU.StateField.Logger = logger
@@ -352,7 +351,6 @@ func TestBinaryType_Default(t *testing.T) {
 
 func TestBinaryType_Blob(t *testing.T) {
 	t.Parallel()
-
 	ts := newTestState(t)
 	logger, hook := testutils.NewLoggerWithHook(t, logrus.WarnLevel)
 	ts.runtime.VU.StateField.Logger = logger
@@ -382,7 +380,6 @@ func TestBinaryType_Blob(t *testing.T) {
 
 func TestBinaryType_ArrayBuffer(t *testing.T) {
 	t.Parallel()
-
 	ts := newTestState(t)
 	logger, hook := testutils.NewLoggerWithHook(t, logrus.WarnLevel)
 	ts.runtime.VU.StateField.Logger = logger

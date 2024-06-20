@@ -57,13 +57,13 @@ func (r *WebSocketsAPI) blob(call sobek.ConstructorCall) *sobek.Object {
 		common.Throw(rt, err)
 	}
 
-	if err := obj.Set("text", func(call sobek.FunctionCall) sobek.Value {
+	if err := obj.Set("text", func(_ sobek.FunctionCall) sobek.Value {
 		return rt.ToValue(b.text())
 	}); err != nil {
 		common.Throw(rt, err)
 	}
 
-	if err := obj.Set("arrayBuffer", func(call sobek.FunctionCall) sobek.Value {
+	if err := obj.Set("arrayBuffer", func(_ sobek.FunctionCall) sobek.Value {
 		return rt.ToValue(rt.NewArrayBuffer(b.data.Bytes()))
 	}); err != nil {
 		common.Throw(rt, err)
@@ -75,7 +75,7 @@ func (r *WebSocketsAPI) blob(call sobek.ConstructorCall) *sobek.Object {
 		common.Throw(rt, err)
 	}
 
-	if err := proto.Set("toString", func(call sobek.FunctionCall) sobek.Value {
+	if err := proto.Set("toString", func(_ sobek.FunctionCall) sobek.Value {
 		return rt.ToValue("[object Blob]")
 	}); err != nil {
 		common.Throw(rt, err)
