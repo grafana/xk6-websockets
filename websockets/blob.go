@@ -2,6 +2,7 @@ package websockets
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/grafana/sobek"
 
@@ -38,48 +39,30 @@ func (r *WebSocketsAPI) blob(call sobek.ConstructorCall) *sobek.Object {
 				_, err = b.data.WriteString(v)
 			}
 			if err != nil {
-				common.Throw(rt, err)
+				common.Throw(rt, fmt.Errorf("failed to process [blobParts]: %w", err))
 			}
 		}
 	}
 
 	obj := rt.NewObject()
-
-	if err := obj.DefineAccessorProperty("type", rt.ToValue(func() sobek.Value {
+	must(rt, obj.DefineAccessorProperty("type", rt.ToValue(func() sobek.Value {
 		return rt.ToValue(b.typ)
-	}), nil, sobek.FLAG_FALSE, sobek.FLAG_TRUE); err != nil {
-		common.Throw(rt, err)
-	}
-
-	if err := obj.DefineAccessorProperty("size", rt.ToValue(func() sobek.Value {
+	}), nil, sobek.FLAG_FALSE, sobek.FLAG_TRUE))
+	must(rt, obj.DefineAccessorProperty("size", rt.ToValue(func() sobek.Value {
 		return rt.ToValue(b.data.Len())
-	}), nil, sobek.FLAG_FALSE, sobek.FLAG_TRUE); err != nil {
-		common.Throw(rt, err)
-	}
-
-	if err := obj.Set("text", func(_ sobek.FunctionCall) sobek.Value {
+	}), nil, sobek.FLAG_FALSE, sobek.FLAG_TRUE))
+	must(rt, obj.Set("text", func(_ sobek.FunctionCall) sobek.Value {
 		return rt.ToValue(b.text())
-	}); err != nil {
-		common.Throw(rt, err)
-	}
-
-	if err := obj.Set("arrayBuffer", func(_ sobek.FunctionCall) sobek.Value {
+	}))
+	must(rt, obj.Set("arrayBuffer", func(_ sobek.FunctionCall) sobek.Value {
 		return rt.ToValue(rt.NewArrayBuffer(b.data.Bytes()))
-	}); err != nil {
-		common.Throw(rt, err)
-	}
+	}))
 
 	proto := call.This.Prototype()
-	err := obj.SetPrototype(proto)
-	if err != nil {
-		common.Throw(rt, err)
-	}
-
-	if err := proto.Set("toString", func(_ sobek.FunctionCall) sobek.Value {
+	must(rt, proto.Set("toString", func(_ sobek.FunctionCall) sobek.Value {
 		return rt.ToValue("[object Blob]")
-	}); err != nil {
-		common.Throw(rt, err)
-	}
+	}))
+	must(rt, obj.SetPrototype(proto))
 
 	return obj
 }
