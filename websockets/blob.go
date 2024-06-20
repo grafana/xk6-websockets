@@ -8,12 +8,12 @@ import (
 	"go.k6.io/k6/js/common"
 )
 
-type Blob struct {
+type blob struct {
 	typ  string
 	data bytes.Buffer
 }
 
-func (b *Blob) text() string {
+func (b *blob) text() string {
 	return b.data.String()
 }
 
@@ -27,7 +27,7 @@ func (r *WebSocketsAPI) blob(call sobek.ConstructorCall) *sobek.Object {
 		}
 	}
 
-	b := &Blob{}
+	b := &blob{}
 	if len(blobParts) > 0 {
 		for _, part := range blobParts {
 			var err error
