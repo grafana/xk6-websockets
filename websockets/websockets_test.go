@@ -319,14 +319,13 @@ func TestBinaryState(t *testing.T) {
 	require.Len(t, logs, 0)
 }
 
-func TestBinaryType(t *testing.T) {
+func TestBinaryType_Default(t *testing.T) {
 	t.Parallel()
 
-	t.Run("default", func(t *testing.T) {
-		ts := newTestState(t)
-		logger, hook := testutils.NewLoggerWithHook(t, logrus.WarnLevel)
-		ts.runtime.VU.StateField.Logger = logger
-		_, err := ts.runtime.RunOnEventLoop(ts.tb.Replacer.Replace(`
+	ts := newTestState(t)
+	logger, hook := testutils.NewLoggerWithHook(t, logrus.WarnLevel)
+	ts.runtime.VU.StateField.Logger = logger
+	_, err := ts.runtime.RunOnEventLoop(ts.tb.Replacer.Replace(`
 		var ws = new WebSocket("WSBIN_URL/ws-echo")
 		ws.addEventListener("open", () => {
 			const sent = new Uint8Array([164,41]).buffer
@@ -344,16 +343,18 @@ func TestBinaryType(t *testing.T) {
 			}
 		})
 	`))
-		require.NoError(t, err)
-		logs := hook.Drain()
-		require.Len(t, logs, 0)
-	})
+	require.NoError(t, err)
+	logs := hook.Drain()
+	require.Len(t, logs, 0)
+}
 
-	t.Run("blob", func(t *testing.T) {
-		ts := newTestState(t)
-		logger, hook := testutils.NewLoggerWithHook(t, logrus.WarnLevel)
-		ts.runtime.VU.StateField.Logger = logger
-		_, err := ts.runtime.RunOnEventLoop(ts.tb.Replacer.Replace(`
+func TestBinaryType_Blob(t *testing.T) {
+	t.Parallel()
+
+	ts := newTestState(t)
+	logger, hook := testutils.NewLoggerWithHook(t, logrus.WarnLevel)
+	ts.runtime.VU.StateField.Logger = logger
+	_, err := ts.runtime.RunOnEventLoop(ts.tb.Replacer.Replace(`
 		var ws = new WebSocket("WSBIN_URL/ws-echo")
 		ws.binaryType = "blob"
 		ws.addEventListener("open", () => {
@@ -372,16 +373,18 @@ func TestBinaryType(t *testing.T) {
 			}
 		})
 	`))
-		require.NoError(t, err)
-		logs := hook.Drain()
-		require.Len(t, logs, 0)
-	})
+	require.NoError(t, err)
+	logs := hook.Drain()
+	require.Len(t, logs, 0)
+}
 
-	t.Run("arraybuffer", func(t *testing.T) {
-		ts := newTestState(t)
-		logger, hook := testutils.NewLoggerWithHook(t, logrus.WarnLevel)
-		ts.runtime.VU.StateField.Logger = logger
-		_, err := ts.runtime.RunOnEventLoop(ts.tb.Replacer.Replace(`
+func TestBinaryType_ArrayBuffer(t *testing.T) {
+	t.Parallel()
+
+	ts := newTestState(t)
+	logger, hook := testutils.NewLoggerWithHook(t, logrus.WarnLevel)
+	ts.runtime.VU.StateField.Logger = logger
+	_, err := ts.runtime.RunOnEventLoop(ts.tb.Replacer.Replace(`
 		var ws = new WebSocket("WSBIN_URL/ws-echo")
 		ws.binaryType = "arraybuffer"
 		ws.addEventListener("open", () => {
@@ -400,10 +403,9 @@ func TestBinaryType(t *testing.T) {
 			}
 		})
 	`))
-		require.NoError(t, err)
-		logs := hook.Drain()
-		require.Len(t, logs, 0)
-	})
+	require.NoError(t, err)
+	logs := hook.Drain()
+	require.Len(t, logs, 0)
 }
 
 func TestExceptionDontPanic(t *testing.T) {
