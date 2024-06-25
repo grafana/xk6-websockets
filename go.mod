@@ -2,8 +2,6 @@ module github.com/grafana/xk6-websockets
 
 go 1.21
 
-toolchain go1.22.3
-
 require (
 	github.com/gorilla/websocket v1.5.1
 	github.com/grafana/sobek v0.0.0-20240607083612-4f0cd64f4e78
