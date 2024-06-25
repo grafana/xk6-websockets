@@ -24,8 +24,8 @@ func (r *WebSocketsAPI) blob(call sobek.ConstructorCall) *sobek.Object {
 
 	var blobParts []interface{}
 	if len(call.Arguments) > 0 {
-		if parts, ok := call.Arguments[0].Export().([]interface{}); ok {
-			blobParts = parts
+		if err := rt.ExportTo(call.Arguments[0], &blobParts); err != nil {
+			common.Throw(rt, fmt.Errorf("failed to process [blobParts]: %w", err))
 		}
 	}
 

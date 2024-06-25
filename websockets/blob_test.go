@@ -38,7 +38,7 @@ func TestBlob_stream(t *testing.T) {
 	ts := newTestState(t)
 	val, err := ts.runtime.RunOnEventLoop(`
 		(async () => {
-          const blob = new Blob(["P", "A", "SS"]);
+		  const blob = new Blob(["P", "A", "SS"]);
 		  const reader = blob.stream().getReader();
 		  const {value} = await reader.read();
 		  return value;
