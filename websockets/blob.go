@@ -34,36 +34,7 @@ func (r *WebSocketsAPI) blob(call sobek.ConstructorCall) *sobek.Object {
 	}
 
 	if len(blobParts) > 0 {
-		for n, part := range blobParts {
-			var err error
-			switch v := part.(type) {
-			case []uint8:
-				_, err = b.data.Write(v)
-			case []int8, []int16, []int32, []int64, []uint16, []uint32, []uint64, []float32, []float64:
-				_, err = b.data.Write(toByteSlice(v))
-			case sobek.ArrayBuffer:
-				_, err = b.data.Write(v.Bytes())
-			case *sobek.ArrayBuffer:
-				_, err = b.data.Write(v.Bytes())
-			case string:
-				_, err = b.data.WriteString(v)
-			case map[string]interface{}:
-				obj := call.Arguments[0].ToObject(rt).Get(strconv.FormatInt(int64(n), 10)).ToObject(rt)
-				switch {
-				case isDataView(obj, rt):
-					_, err = b.data.Write(obj.Get("buffer").Export().(sobek.ArrayBuffer).Bytes())
-				case isBlob(obj, rt):
-					_, err = b.data.Write(extractBytes(obj, rt))
-				default:
-					err = fmt.Errorf("unsupported type: %T", part)
-				}
-			default:
-				err = fmt.Errorf("unsupported type: %T", part)
-			}
-			if err != nil {
-				common.Throw(rt, fmt.Errorf("failed to process [blobParts]: %w", err))
-			}
-		}
+		r.fillData(b, blobParts, call)
 	}
 
 	if len(call.Arguments) > 1 && !sobek.IsUndefined(call.Arguments[1]) {
@@ -102,26 +73,7 @@ func (r *WebSocketsAPI) blob(call sobek.ConstructorCall) *sobek.Object {
 		return rt.ToValue(promise)
 	}))
 	must(rt, obj.Set("slice", func(call sobek.FunctionCall) sobek.Value {
-		from, to, ct := 0, b.data.Len(), ""
-		if len(call.Arguments) > 0 {
-			from = int(call.Arguments[0].ToInteger())
-		}
-		if len(call.Arguments) > 1 {
-			to = int(call.Arguments[1].ToInteger())
-			if to < 0 {
-				to = b.data.Len() + to
-			}
-		}
-		if len(call.Arguments) > 2 {
-			ct = call.Arguments[2].String()
-		}
-
-		opts := rt.NewObject()
-		must(rt, opts.Set("type", ct))
-
-		slice, err := rt.New(rt.Get("Blob"), rt.ToValue([]interface{}{b.data.Bytes()[from:to]}), opts)
-		must(rt, err)
-		return slice
+		return r.slice(call, b, rt)
 	}))
 	must(rt, obj.Set("text", func(_ sobek.FunctionCall) sobek.Value {
 		promise, resolve, _ := rt.NewPromise()
@@ -141,7 +93,77 @@ func (r *WebSocketsAPI) blob(call sobek.ConstructorCall) *sobek.Object {
 	return obj
 }
 
+func (r *WebSocketsAPI) fillData(b *blob, blobParts []interface{}, call sobek.ConstructorCall) {
+	rt := r.vu.Runtime()
+
+	if len(blobParts) > 0 {
+		for n, part := range blobParts {
+			var err error
+			switch v := part.(type) {
+			case []uint8:
+				_, err = b.data.Write(v)
+			case []int8, []int16, []int32, []int64, []uint16, []uint32, []uint64, []float32, []float64:
+				_, err = b.data.Write(toByteSlice(v))
+			case sobek.ArrayBuffer:
+				_, err = b.data.Write(v.Bytes())
+			case *sobek.ArrayBuffer:
+				_, err = b.data.Write(v.Bytes())
+			case string:
+				_, err = b.data.WriteString(v)
+			case map[string]interface{}:
+				obj := call.Arguments[0].ToObject(rt).Get(strconv.FormatInt(int64(n), 10)).ToObject(rt)
+				switch {
+				case isDataView(obj, rt):
+					_, err = b.data.Write(obj.Get("buffer").Export().(sobek.ArrayBuffer).Bytes())
+				case isBlob(obj, rt):
+					_, err = b.data.Write(extractBytes(obj, rt))
+				default:
+					err = fmt.Errorf("unsupported type: %T", part)
+				}
+			default:
+				err = fmt.Errorf("unsupported type: %T", part)
+			}
+			if err != nil {
+				common.Throw(rt, fmt.Errorf("failed to process [blobParts]: %w", err))
+			}
+		}
+	}
+}
+
+func (r *WebSocketsAPI) slice(call sobek.FunctionCall, b *blob, rt *sobek.Runtime) sobek.Value {
+	var (
+		from int
+		to   = b.data.Len()
+		ct   = ""
+	)
+
+	if len(call.Arguments) > 0 {
+		from = int(call.Arguments[0].ToInteger())
+	}
+
+	if len(call.Arguments) > 1 {
+		to = int(call.Arguments[1].ToInteger())
+		if to < 0 {
+			to = b.data.Len() + to
+		}
+	}
+
+	if len(call.Arguments) > 2 {
+		ct = call.Arguments[2].String()
+	}
+
+	opts := rt.NewObject()
+	must(rt, opts.Set("type", ct))
+
+	sliced, err := rt.New(rt.Get("Blob"), rt.ToValue([]interface{}{b.data.Bytes()[from:to]}), opts)
+	must(rt, err)
+
+	return sliced
+}
+
 // toByteSlice converts a slice of numbers to a slice of bytes.
+//
+//nolint:gosec
 func toByteSlice(data interface{}) []byte {
 	switch v := data.(type) {
 	case []int8:
