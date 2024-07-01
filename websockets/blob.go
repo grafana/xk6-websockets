@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"strconv"
 	"unsafe"
 
 	"github.com/grafana/sobek"
@@ -33,7 +34,7 @@ func (r *WebSocketsAPI) blob(call sobek.ConstructorCall) *sobek.Object {
 	}
 
 	if len(blobParts) > 0 {
-		for _, part := range blobParts {
+		for n, part := range blobParts {
 			var err error
 			switch v := part.(type) {
 			case []uint8:
@@ -46,6 +47,21 @@ func (r *WebSocketsAPI) blob(call sobek.ConstructorCall) *sobek.Object {
 				_, err = b.data.Write(v.Bytes())
 			case string:
 				_, err = b.data.WriteString(v)
+			case map[string]interface{}:
+				obj := call.Arguments[0].ToObject(rt).Get(strconv.FormatInt(int64(n), 10)).ToObject(rt)
+				switch {
+				case isDataView(obj, rt):
+					_, err = b.data.Write(obj.Get("buffer").Export().(sobek.ArrayBuffer).Bytes())
+				case isBlob(obj, rt):
+					var bp *blob
+					if err := rt.ExportTo(obj.Get("_ref"), &bp); err != nil {
+						err = fmt.Errorf("could not fetch Blob data: %w", err)
+						break
+					}
+					_, err = b.data.Write(bp.data.Bytes())
+				default:
+					err = fmt.Errorf("unsupported type: %T", part)
+				}
 			default:
 				err = fmt.Errorf("unsupported type: %T", part)
 			}

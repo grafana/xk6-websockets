@@ -64,6 +64,14 @@ func TestBlob(t *testing.T) {
 			blobPartsDef:  `[new Float64Array(new Uint8Array([0x50, 0x41, 0x53, 0x53, 0x00, 0x00, 0x00, 0x00]).buffer)]`,
 			bytesExpected: append([]byte("PASS"), 0x0, 0x0, 0x0, 0x0),
 		},
+		"DataView": {
+			blobPartsDef:  `[new DataView(new Int8Array([0x50, 0x41, 0x53, 0x53]).buffer)]`,
+			bytesExpected: []byte("PASS"),
+		},
+		"Blob": {
+			blobPartsDef:  `[new Blob(["PASS"])]`,
+			bytesExpected: []byte("PASS"),
+		},
 	}
 
 	for name, tc := range tcs {

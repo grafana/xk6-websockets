@@ -107,6 +107,10 @@ func isUint8Array(o *sobek.Object, rt *sobek.Runtime) bool {
 	return o.Prototype().Get("constructor") == rt.GlobalObject().Get("Uint8Array")
 }
 
+func isDataView(o *sobek.Object, rt *sobek.Runtime) bool {
+	return o.Prototype().Get("constructor") == rt.GlobalObject().Get("DataView")
+}
+
 func isBlob(o *sobek.Object, rt *sobek.Runtime) bool {
 	return o.Prototype().Get("constructor") == rt.GlobalObject().Get("Blob")
 }
