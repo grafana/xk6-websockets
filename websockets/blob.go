@@ -68,6 +68,9 @@ func (r *WebSocketsAPI) blob(call sobek.ConstructorCall) *sobek.Object {
 	}
 
 	obj := rt.NewObject()
+	must(rt, obj.DefineAccessorProperty("_ref", rt.ToValue(func() sobek.Value {
+		return rt.ToValue(b)
+	}), nil, sobek.FLAG_FALSE, sobek.FLAG_FALSE)) // internal use only
 	must(rt, obj.DefineAccessorProperty("size", rt.ToValue(func() sobek.Value {
 		return rt.ToValue(b.data.Len())
 	}), nil, sobek.FLAG_FALSE, sobek.FLAG_TRUE))
