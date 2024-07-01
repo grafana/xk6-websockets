@@ -9,7 +9,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"reflect"
 	"strconv"
 	"sync"
 	"time"
@@ -93,30 +92,6 @@ type webSocket struct {
 type ping struct {
 	counter    int
 	timestamps map[string]time.Time
-}
-
-func isString(o *sobek.Object, rt *sobek.Runtime) bool {
-	return o.Prototype().Get("constructor") == rt.GlobalObject().Get("String")
-}
-
-func isArray(o *sobek.Object, rt *sobek.Runtime) bool {
-	return o.Prototype().Get("constructor") == rt.GlobalObject().Get("Array")
-}
-
-func isUint8Array(o *sobek.Object, rt *sobek.Runtime) bool {
-	return o.Prototype().Get("constructor") == rt.GlobalObject().Get("Uint8Array")
-}
-
-func isDataView(o *sobek.Object, rt *sobek.Runtime) bool {
-	return o.Prototype().Get("constructor") == rt.GlobalObject().Get("DataView")
-}
-
-func isBlob(o *sobek.Object, rt *sobek.Runtime) bool {
-	return o.Prototype().Get("constructor") == rt.GlobalObject().Get("Blob")
-}
-
-func isObject(val sobek.Value) bool {
-	return val != nil && val.ExportType() != nil && val.ExportType().Kind() == reflect.Map
 }
 
 func (r *WebSocketsAPI) websocket(c sobek.ConstructorCall) *sobek.Object {
@@ -651,15 +626,11 @@ func (w *webSocket) send(msg sobek.Value) {
 			common.Throw(rt, fmt.Errorf("unsupported send type %T", o))
 		}
 
-		var b *blob
-		if err := rt.ExportTo(obj.Get("_ref"), &b); err != nil {
-			common.Throw(rt, fmt.Errorf("could not fetch Blob data: %w", err))
-		}
-
-		w.bufferedAmount += b.data.Len()
+		b := extractBytes(obj, rt)
+		w.bufferedAmount += len(b)
 		w.writeQueueCh <- message{
 			mtype: websocket.BinaryMessage,
-			data:  b.data.Bytes(),
+			data:  b,
 			t:     time.Now(),
 		}
 

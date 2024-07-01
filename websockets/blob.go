@@ -53,12 +53,7 @@ func (r *WebSocketsAPI) blob(call sobek.ConstructorCall) *sobek.Object {
 				case isDataView(obj, rt):
 					_, err = b.data.Write(obj.Get("buffer").Export().(sobek.ArrayBuffer).Bytes())
 				case isBlob(obj, rt):
-					var bp *blob
-					if err := rt.ExportTo(obj.Get("_ref"), &bp); err != nil {
-						err = fmt.Errorf("could not fetch Blob data: %w", err)
-						break
-					}
-					_, err = b.data.Write(bp.data.Bytes())
+					_, err = b.data.Write(extractBytes(obj, rt))
 				default:
 					err = fmt.Errorf("unsupported type: %T", part)
 				}
@@ -84,9 +79,6 @@ func (r *WebSocketsAPI) blob(call sobek.ConstructorCall) *sobek.Object {
 	}
 
 	obj := rt.NewObject()
-	must(rt, obj.DefineAccessorProperty("_ref", rt.ToValue(func() sobek.Value {
-		return rt.ToValue(b)
-	}), nil, sobek.FLAG_FALSE, sobek.FLAG_FALSE)) // internal use only
 	must(rt, obj.DefineAccessorProperty("size", rt.ToValue(func() sobek.Value {
 		return rt.ToValue(b.data.Len())
 	}), nil, sobek.FLAG_FALSE, sobek.FLAG_TRUE))
