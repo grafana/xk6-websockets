@@ -24,7 +24,7 @@ func TestBlob(t *testing.T) {
 			bytesExpected: []byte("PASS"),
 		},
 		"ArrayBuffer": {
-			blobPartsDef:  `[new Uint8Array([0x50, 0x41, 0x53, 0x53])]`,
+			blobPartsDef:  `[new Uint8Array([0x50, 0x41, 0x53, 0x53]).buffer]`,
 			bytesExpected: []byte("PASS"),
 		},
 		"Int8Array": {
