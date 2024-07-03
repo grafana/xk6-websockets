@@ -115,7 +115,7 @@ func (r *WebSocketsAPI) fillData(b *blob, blobParts []interface{}, call sobek.Co
 				switch {
 				case isDataView(obj, rt):
 					_, err = b.data.Write(obj.Get("buffer").Export().(sobek.ArrayBuffer).Bytes())
-				case isBlob(obj, rt):
+				case isBlob(obj, r.blobConstructor):
 					_, err = b.data.Write(extractBytes(obj, rt))
 				default:
 					err = fmt.Errorf("unsupported type: %T", part)
@@ -155,7 +155,7 @@ func (r *WebSocketsAPI) slice(call sobek.FunctionCall, b *blob, rt *sobek.Runtim
 	opts := rt.NewObject()
 	must(rt, opts.Set("type", ct))
 
-	sliced, err := rt.New(rt.Get("Blob"), rt.ToValue([]interface{}{b.data.Bytes()[from:to]}), opts)
+	sliced, err := rt.New(r.blobConstructor, rt.ToValue([]interface{}{b.data.Bytes()[from:to]}), opts)
 	must(rt, err)
 
 	return sliced

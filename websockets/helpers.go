@@ -32,8 +32,8 @@ func isDataView(o *sobek.Object, rt *sobek.Runtime) bool {
 	return o.Prototype().Get("constructor") == rt.GlobalObject().Get("DataView")
 }
 
-func isBlob(o *sobek.Object, rt *sobek.Runtime) bool {
-	return o.Prototype().Get("constructor") == rt.GlobalObject().Get("Blob")
+func isBlob(o *sobek.Object, blobConstructor sobek.Value) bool {
+	return o.Prototype().Get("constructor") == blobConstructor
 }
 
 func isObject(val sobek.Value) bool {

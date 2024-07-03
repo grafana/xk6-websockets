@@ -107,7 +107,7 @@ func TestBlob_type(t *testing.T) {
 		new Blob(["PASS"], { type: "text/example" });
 	`)
 	require.NoError(t, err)
-	require.True(t, isBlob(val.ToObject(rt), rt))
+	require.True(t, isBlob(val.ToObject(rt), ts.module.blobConstructor))
 	require.Equal(t, "text/example", val.ToObject(rt).Get("type").String())
 }
 
@@ -119,7 +119,7 @@ func TestBlob_size(t *testing.T) {
 		new Blob(["PASS"]);
 	`)
 	require.NoError(t, err)
-	require.True(t, isBlob(val.ToObject(rt), rt))
+	require.True(t, isBlob(val.ToObject(rt), ts.module.blobConstructor))
 	require.Equal(t, int64(4), val.ToObject(rt).Get("size").ToInteger())
 }
 
@@ -210,16 +210,16 @@ func TestBlob_slice(t *testing.T) {
 			require.True(t, ok)
 
 			rt := ts.runtime.VU.Runtime()
-			assertBlobTypeAndContents(t, rt, p.Result().ToObject(rt), tc.ctExpected, tc.bytesExpected)
+			assertBlobTypeAndContents(t, ts, p.Result().ToObject(rt), tc.ctExpected, tc.bytesExpected)
 		})
 	}
 }
 
-func assertBlobTypeAndContents(t *testing.T, rt *sobek.Runtime, blob *sobek.Object, expType string, expContents []byte) {
+func assertBlobTypeAndContents(t *testing.T, ts testState, blob *sobek.Object, expType string, expContents []byte) {
 	t.Helper()
 
 	// First, we assert the given object is 'instanceof' Blob.
-	require.True(t, isBlob(blob, rt))
+	require.True(t, isBlob(blob, ts.module.blobConstructor))
 
 	// Then, we assert the type of the blob.
 	require.Equal(t, expType, blob.Get("type").String())

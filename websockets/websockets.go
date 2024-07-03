@@ -28,7 +28,8 @@ type RootModule struct{}
 
 // WebSocketsAPI is the k6 extension implementing the websocket API as defined in https://websockets.spec.whatwg.org
 type WebSocketsAPI struct { //nolint:revive
-	vu modules.VU
+	vu              modules.VU
+	blobConstructor sobek.Value
 }
 
 var _ modules.Module = &RootModule{}
@@ -42,10 +43,11 @@ func (r *RootModule) NewModuleInstance(vu modules.VU) modules.Instance {
 
 // Exports implements the modules.Instance interface's Exports
 func (r *WebSocketsAPI) Exports() modules.Exports {
+	r.blobConstructor = r.vu.Runtime().ToValue(r.blob)
 	return modules.Exports{
 		Named: map[string]interface{}{
 			"WebSocket": r.websocket,
-			"Blob":      r.blob,
+			"Blob":      r.blobConstructor,
 		},
 	}
 }
@@ -65,7 +67,9 @@ const (
 )
 
 type webSocket struct {
-	vu             modules.VU
+	vu              modules.VU
+	blobConstructor sobek.Value
+
 	url            *url.URL
 	conn           *websocket.Conn
 	tagsAndMeta    *metrics.TagsAndMeta
@@ -121,17 +125,18 @@ func (r *WebSocketsAPI) websocket(c sobek.ConstructorCall) *sobek.Object {
 	}
 
 	w := &webSocket{
-		vu:             r.vu,
-		url:            url,
-		tq:             taskqueue.New(r.vu.RegisterCallback),
-		readyState:     CONNECTING,
-		builtinMetrics: r.vu.State().BuiltinMetrics,
-		done:           make(chan struct{}),
-		writeQueueCh:   make(chan message),
-		eventListeners: newEventListeners(),
-		obj:            rt.NewObject(),
-		tagsAndMeta:    params.tagsAndMeta,
-		sendPings:      ping{timestamps: make(map[string]time.Time)},
+		vu:              r.vu,
+		blobConstructor: r.blobConstructor,
+		url:             url,
+		tq:              taskqueue.New(r.vu.RegisterCallback),
+		readyState:      CONNECTING,
+		builtinMetrics:  r.vu.State().BuiltinMetrics,
+		done:            make(chan struct{}),
+		writeQueueCh:    make(chan message),
+		eventListeners:  newEventListeners(),
+		obj:             rt.NewObject(),
+		tagsAndMeta:     params.tagsAndMeta,
+		sendPings:       ping{timestamps: make(map[string]time.Time)},
 	}
 
 	// Maybe have this after the goroutine below ?!?
@@ -449,7 +454,7 @@ func (w *webSocket) queueMessage(msg *message) {
 				return errors.New(binarytypeError)
 			case blobBinaryType:
 				var err error
-				data, err = rt.New(rt.Get("Blob"), rt.ToValue([]interface{}{msg.data}))
+				data, err = rt.New(w.blobConstructor, rt.ToValue([]interface{}{msg.data}))
 				if err != nil {
 					return fmt.Errorf("failed to create Blob: %w", err)
 				}
@@ -622,7 +627,7 @@ func (w *webSocket) send(msg sobek.Value) {
 	case map[string]interface{}:
 		rt := w.vu.Runtime()
 		obj := msg.ToObject(rt)
-		if !isBlob(obj, rt) {
+		if !isBlob(obj, w.blobConstructor) {
 			common.Throw(rt, fmt.Errorf("unsupported send type %T", o))
 		}
 

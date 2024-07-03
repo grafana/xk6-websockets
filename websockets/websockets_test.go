@@ -89,6 +89,8 @@ type testState struct {
 
 	callRecorder *callRecorder
 	errors       chan error
+
+	module *WebSocketsAPI
 }
 
 // callRecorder a helper type that records all calls
@@ -163,6 +165,7 @@ func newTestState(t testing.TB) testState {
 		callRecorder: recorder,
 		errors:       make(chan error, 50),
 		t:            t,
+		module:       m.(*WebSocketsAPI),
 	}
 }
 
