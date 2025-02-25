@@ -1,5 +1,8 @@
 # xk6-websockets
 
+> [!WARNING]
+> The `xk6-websockets` extension [has been merged](https://github.com/grafana/k6/pull/4131) to the [main k6 repository](https://github.com/grafana/k6). Please contribute and [open issues there](https://github.com/grafana/k6/issues). This repository is no longer maintained.
+
 This extension adds a PoC [Websockets API](https://websockets.spec.whatwg.org) implementation to [k6](https://www.k6.io).
 
 This is meant to try to implement the specification as close as possible without doing stuff that don't make sense in k6 like:
